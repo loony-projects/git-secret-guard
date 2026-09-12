@@ -24,7 +24,11 @@ closely, that's a normal PR: edit the file, no other code changes needed.
 
 | Stack | Template key | File | Detected via |
 |---|---|---|---|
-| Node.js | `node` | `Node.gitignore` | `package.json` manifest, or `node_modules/` on disk |
+| Node.js | `node` | `Node.gitignore` | `package.json` manifest (with neither `react` nor `react-native` as a dependency), or `node_modules/` on disk |
+| React | `react` | `React.gitignore` | `package.json` manifest with `react` as a dependency (and not `react-native`) |
+| React Native | `react-native` | `ReactNative.gitignore` | `package.json` manifest with `react-native` as a dependency. Covers the JS/Metro/Expo layer *and* the app's `android/`/`ios/` native subtrees in one block — see "React Native suppresses nested Android/iOS detection" below. |
+| Android | `android` | `Android.gitignore` | `AndroidManifest.xml` manifest, anywhere in the tree (not just at the root) |
+| iOS | `ios` | `iOS.gitignore` | `Podfile`, or a `*.xcodeproj`/`*.xcworkspace` directory |
 | Rust | `rust` | `Rust.gitignore` | `Cargo.toml` manifest |
 | Python | `python` | `Python.gitignore` | `pyproject.toml` / `requirements.txt` / `Pipfile`, or `__pycache__/`/`.venv/`/`venv/` on disk |
 | Go | `go` | `Go.gitignore` | `go.mod` manifest |
@@ -40,6 +44,20 @@ closely, that's a normal PR: edit the file, no other code changes needed.
 | Editor dirs (optional, commented out) | `editor` | `Editor.gitignore` | n/a — proposed alongside any other detected stack, inert until manually uncommented |
 | Ambiguous `target/`, no manifest | `generic-target` | `GenericTarget.gitignore` | `target/` on disk with neither `Cargo.toml` nor `pom.xml` alongside it |
 | Ambiguous `vendor/`, no manifest | `generic-vendor` | `GenericVendor.gitignore` | `vendor/` on disk with neither `composer.json` nor `go.mod` alongside it |
+
+## React Native suppresses nested Android/iOS detection
+
+A React Native app's `android/` and `ios/` directories are native-project
+*scaffolding of that app*, not separate projects someone happens to have
+nested inside it — `ReactNative.gitignore` already covers both layers (Expo/
+Metro caches, Gradle build output under `android/`, Pods/DerivedData under
+`ios/`). So once `projectDetector.ts` classifies a directory's `package.json`
+as React Native, it does not recurse into that directory's `android/` or
+`ios/` subdirectories at all — otherwise a single RN app would produce four
+overlapping blocks ("React Native", "Java (Gradle)", "Android", "iOS")
+instead of one coherent one. A *standalone* native Android or iOS project
+(no react-native package.json anywhere above it) is unaffected and still
+gets its own `Android`/`iOS` block exactly like any other stack.
 
 ## Adding a stack
 

@@ -1,0 +1,12 @@
+*.apk
+*.aab
+*.ap_
+*.dex
+local.properties
+.gradle/
+.cxx/
+captures/
+.externalNativeBuild/
+build/
+*.iml
+release/

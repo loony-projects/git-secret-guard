@@ -2,6 +2,7 @@ import * as assert from "assert";
 import * as fs from "fs";
 import * as path from "path";
 import { extractRuleBlocks, extractScalarField } from "../../scanEngine/configMerge";
+import { SECRET_FIXTURES } from "./fixtures/secretFixtures";
 
 /**
  * Compiles every rule's regex from the bundled default.toml as a real
@@ -9,6 +10,12 @@ import { extractRuleBlocks, extractScalarField } from "../../scanEngine/configMe
  * exercises the ruleset's quality (does the AWS fixture get flagged? does
  * the UUID lookalike NOT get flagged?), since the gitleaksClient unit tests
  * mock the CLI process entirely and never touch these regexes.
+ *
+ * The "secrets" half of the corpus comes from fixtures/secretFixtures.ts
+ * (built from split string literals at runtime, not literal file content —
+ * see that file for why) rather than static files on disk; the lookalikes
+ * (UUID, git hash, base64 blob — none of them secret-shaped) are still
+ * plain committed files under the repo's top-level fixtures/lookalikes/.
  *
  * gitleaks compiles these with Go's RE2 engine, which supports an inline
  * `(?i)` flag but — unlike PCRE/JS — applies it as a mode-setting group,
@@ -72,13 +79,18 @@ describe("bundled default.toml ruleset", () => {
     assert.ok(rules.length >= 15, `expected at least 15 rules, found ${rules.length}`);
   });
 
-  for (const [fixtureFile, expectedRuleIds] of Object.entries(SECRET_FIXTURE_EXPECTATIONS)) {
-    it(`flags fixtures/secrets/${fixtureFile} with ${expectedRuleIds.join(", ")}`, () => {
-      const content = fs.readFileSync(path.join(FIXTURES_ROOT, "secrets", fixtureFile), "utf8");
+  it("has exactly one expectation per registered secret fixture", () => {
+    assert.deepStrictEqual(Object.keys(SECRET_FIXTURES).sort(), Object.keys(SECRET_FIXTURE_EXPECTATIONS).sort());
+  });
+
+  for (const [fixtureName, expectedRuleIds] of Object.entries(SECRET_FIXTURE_EXPECTATIONS)) {
+    it(`flags the ${fixtureName} fixture with ${expectedRuleIds.join(", ")}`, () => {
+      const content = SECRET_FIXTURES[fixtureName];
+      assert.ok(content, `no fixture registered for "${fixtureName}"`);
       for (const ruleId of expectedRuleIds) {
         const rule = rules.find((r) => r.id === ruleId);
         assert.ok(rule, `rule "${ruleId}" not found in default.toml`);
-        assert.ok(rule!.regex.test(content), `expected rule "${ruleId}" to match fixtures/secrets/${fixtureFile}`);
+        assert.ok(rule!.regex.test(content), `expected rule "${ruleId}" to match the ${fixtureName} fixture`);
       }
     });
   }

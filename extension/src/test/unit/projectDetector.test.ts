@@ -47,4 +47,32 @@ describe("projectDetector", () => {
     const detections = detectStacks(path.join(FIXTURES, "node-only"));
     assert.strictEqual(detections.length, 1);
   });
+
+  it("labels a package.json depending on react as React, not generic Node.js", () => {
+    const labels = labelsFor(path.join(FIXTURES, "react-only"));
+    assert.deepStrictEqual(labels, ["React"]);
+  });
+
+  it("labels a package.json depending on react-native as React Native, and does not also flag Android/iOS in its android/ios subtrees", () => {
+    const detections = detectStacks(path.join(FIXTURES, "react-native-only"));
+    const labels = detections.map((d) => d.label);
+    assert.deepStrictEqual(labels, ["React Native"]);
+    assert.strictEqual(labels.includes("Android"), false, "android/ is scaffolding of the RN app, not a separate project");
+    assert.strictEqual(labels.includes("iOS"), false, "ios/ is scaffolding of the RN app, not a separate project");
+  });
+
+  it("detects a standalone Android project via AndroidManifest.xml", () => {
+    const detections = detectStacks(path.join(FIXTURES, "android-only"));
+    const byLabel = new Map(detections.map((d) => [d.label, d.subtree]));
+    assert.strictEqual(byLabel.get("Android"), path.join("app", "src", "main"));
+    assert.ok(byLabel.has("Java (Gradle)"), "the root build.gradle should still be detected independently");
+  });
+
+  it("detects a standalone iOS project via Podfile and an .xcodeproj directory", () => {
+    const detections = detectStacks(path.join(FIXTURES, "ios-only"));
+    const iosDetections = detections.filter((d) => d.label === "iOS");
+    assert.strictEqual(iosDetections.length, 1, "Podfile + .xcodeproj in the same directory should merge into one iOS block, not two");
+    assert.ok(iosDetections[0].signals.some((s) => s.includes("Podfile")));
+    assert.ok(iosDetections[0].signals.some((s) => s.includes(".xcodeproj")));
+  });
 });

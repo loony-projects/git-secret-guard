@@ -1,0 +1,11 @@
+node_modules/
+build/
+dist/
+.cache/
+.eslintcache
+.parcel-cache/
+storybook-static/
+coverage/
+.env
+.env.local
+.env.*.local

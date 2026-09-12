@@ -22,8 +22,12 @@ interface ManifestSignal {
   templateKey: string;
 }
 
+const PACKAGE_JSON = "package.json";
+
+// package.json is handled specially (see classifyPackageJson) rather than as
+// a static entry here, so a React/React Native project gets that label
+// instead of a generic "Node.js" one.
 const MANIFEST_SIGNALS: ManifestSignal[] = [
-  { file: "package.json", label: "Node.js", templateKey: "node" },
   { file: "Cargo.toml", label: "Rust", templateKey: "rust" },
   { file: "pyproject.toml", label: "Python", templateKey: "python" },
   { file: "requirements.txt", label: "Python", templateKey: "python" },
@@ -37,7 +41,37 @@ const MANIFEST_SIGNALS: ManifestSignal[] = [
   { file: "CMakeLists.txt", label: "C/C++ (CMake)", templateKey: "cmake" },
   { file: "mix.exs", label: "Elixir", templateKey: "elixir" },
   { file: "pubspec.yaml", label: "Dart/Flutter", templateKey: "dart" },
+  { file: "AndroidManifest.xml", label: "Android", templateKey: "android" },
+  { file: "Podfile", label: "iOS", templateKey: "ios" },
 ];
+
+/**
+ * A React Native project's package.json depends on "react-native"; a plain
+ * React (web) project depends on "react" but not "react-native"; anything
+ * else with a package.json is generic Node.js. This is the one place this
+ * detector looks inside a manifest's content rather than just its filename
+ * — worth it here because "Node.js" vs "React Native" implies genuinely
+ * different ignore rules (Android/iOS build artifacts, Expo/Metro caches).
+ */
+function classifyPackageJson(packageJsonPath: string): { label: string; templateKey: string } {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as {
+      dependencies?: Record<string, unknown>;
+      devDependencies?: Record<string, unknown>;
+    };
+    const deps = { ...(parsed.dependencies ?? {}), ...(parsed.devDependencies ?? {}) };
+    if ("react-native" in deps) {
+      return { label: "React Native", templateKey: "react-native" };
+    }
+    if ("react" in deps) {
+      return { label: "React", templateKey: "react" };
+    }
+  } catch {
+    // Malformed or unreadable package.json — fall through to generic Node.js
+    // rather than failing detection for the whole directory.
+  }
+  return { label: "Node.js", templateKey: "node" };
+}
 
 interface ArtifactSignal {
   dir: string;
@@ -56,10 +90,14 @@ const ARTIFACT_SIGNALS: ArtifactSignal[] = [
 ];
 
 /** Manifest file basenames worth watching for mid-session ("new project type detected") notifications. */
-export const MANIFEST_FILE_NAMES = MANIFEST_SIGNALS.map((s) => s.file);
+export const MANIFEST_FILE_NAMES = [PACKAGE_JSON, ...MANIFEST_SIGNALS.map((s) => s.file)];
 
 function isCsprojOrSln(fileName: string): boolean {
   return fileName.endsWith(".csproj") || fileName.endsWith(".sln");
+}
+
+function isXcodeProjectDir(dirName: string): boolean {
+  return dirName.endsWith(".xcodeproj") || dirName.endsWith(".xcworkspace");
 }
 
 function listDirSafe(dir: string): fs.Dirent[] {
@@ -79,15 +117,27 @@ function listDirSafe(dir: string): fs.Dirent[] {
  */
 export function detectStacks(rootDir: string): StackDetection[] {
   const detections: StackDetection[] = [];
-  walk(rootDir, "", 0, detections);
+  walk(rootDir, "", 0, detections, ALWAYS_SKIP_DIRS);
   return dedupeBySubtreeAndLabel(detections);
 }
 
-function walk(rootDir: string, relativeDir: string, depth: number, out: StackDetection[]): void {
+function walk(rootDir: string, relativeDir: string, depth: number, out: StackDetection[], skipDirs: ReadonlySet<string>): void {
   const absoluteDir = path.join(rootDir, relativeDir);
   const entries = listDirSafe(absoluteDir);
   const fileNames = new Set(entries.filter((e) => e.isFile()).map((e) => e.name));
   const dirNames = new Set(entries.filter((e) => e.isDirectory()).map((e) => e.name));
+
+  let isReactNativeHere = false;
+  if (fileNames.has(PACKAGE_JSON)) {
+    const classification = classifyPackageJson(path.join(absoluteDir, PACKAGE_JSON));
+    out.push({
+      label: classification.label,
+      templateKey: classification.templateKey,
+      subtree: relativeDir,
+      signals: [path.join(relativeDir, PACKAGE_JSON) || PACKAGE_JSON],
+    });
+    isReactNativeHere = classification.templateKey === "react-native";
+  }
 
   for (const signal of MANIFEST_SIGNALS) {
     if (fileNames.has(signal.file)) {
@@ -109,8 +159,21 @@ function walk(rootDir: string, relativeDir: string, depth: number, out: StackDet
       });
     }
   }
+  for (const dirName of dirNames) {
+    if (isXcodeProjectDir(dirName)) {
+      out.push({
+        label: "iOS",
+        templateKey: "ios",
+        subtree: relativeDir,
+        signals: [path.join(relativeDir, dirName) || dirName],
+      });
+    }
+  }
 
   const manifestsHere = MANIFEST_SIGNALS.filter((s) => fileNames.has(s.file)).map((s) => s.file);
+  if (fileNames.has(PACKAGE_JSON)) {
+    manifestsHere.push(PACKAGE_JSON);
+  }
   for (const artifact of ARTIFACT_SIGNALS) {
     if (dirNames.has(artifact.dir) && !artifact.impliedByManifests.some((m) => manifestsHere.includes(m))) {
       out.push({
@@ -163,14 +226,21 @@ function walk(rootDir: string, relativeDir: string, depth: number, out: StackDet
   if (depth >= MAX_DEPTH) {
     return;
   }
+
+  // A React Native project's android/ and ios/ subtrees are native-project
+  // scaffolding *of* the RN app, not separate projects — recursing into them
+  // would produce redundant/confusing "Android"/"iOS" blocks alongside the
+  // already-comprehensive "React Native" one (which covers both layers).
+  const nextSkipDirs = isReactNativeHere ? new Set([...skipDirs, "android", "ios"]) : skipDirs;
+
   for (const dirName of dirNames) {
     if (dirName.startsWith(".") && dirName !== ".") {
       continue;
     }
-    if (ALWAYS_SKIP_DIRS.has(dirName)) {
+    if (nextSkipDirs.has(dirName)) {
       continue;
     }
-    walk(rootDir, path.join(relativeDir, dirName), depth + 1, out);
+    walk(rootDir, path.join(relativeDir, dirName), depth + 1, out, nextSkipDirs);
   }
 }
 

@@ -112,11 +112,18 @@ npm run unit-test   # plain mocha, no VS Code or real gitleaks binary needed
 Unit tests cover: the bundled ruleset's regexes against a fixture corpus of
 fake-but-shaped secrets per provider (and look-alikes — a UUID, a git commit
 hash, a base64 blob — that must *not* trigger); config-merge correctness;
-`.gitignore` merge idempotency; project-type detection across Node/Rust/
-Python/monorepo/artifacts-only fixtures; hook install/uninstall round-trips
-against a real temporary git repository, including a `core.hooksPath` repo;
-and a dedicated test that greps everything the logger ever received for raw
-fixture secret values.
+`.gitignore` merge idempotency; project-type detection across Node/React/
+React Native/Android/iOS/Rust/Python/monorepo/artifacts-only fixtures; hook
+install/uninstall round-trips against a real temporary git repository,
+including a `core.hooksPath` repo; and a dedicated test that greps
+everything the logger ever received for raw fixture secret values.
+
+The fake secrets themselves live in
+[`extension/src/test/unit/fixtures/secretFixtures.ts`](extension/src/test/unit/fixtures/secretFixtures.ts),
+built from split string literals rather than stored whole — a realistic
+fixture (even an obviously fake one) is exactly what push protection on
+GitHub and similar hosts scans for, and would block every push touching
+this repo otherwise. See that file's header comment for details.
 
 `npm test` runs the `@vscode/test-electron` integration suite (needs a real
 VS Code download, so it's better suited to CI or a dev machine than this

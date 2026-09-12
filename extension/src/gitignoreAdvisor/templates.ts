@@ -4,6 +4,10 @@ import * as path from "path";
 /** Maps a projectDetector.ts templateKey to the bundled fragment file in resources/gitignore-templates/. */
 const TEMPLATE_FILES: Record<string, string> = {
   node: "Node.gitignore",
+  react: "React.gitignore",
+  "react-native": "ReactNative.gitignore",
+  android: "Android.gitignore",
+  ios: "iOS.gitignore",
   rust: "Rust.gitignore",
   python: "Python.gitignore",
   go: "Go.gitignore",

@@ -44,20 +44,30 @@ jobs:
         run: npm run unit-test | tee /tmp/unit-test-output.txt
         working-directory: extension
       - name: Assert no raw fixture secret value appears in test output
+        # Fixture secrets are generated at runtime from split string literals
+        # (extension/src/test/unit/fixtures/secretFixtures.ts), not static
+        # files, precisely so nothing secret-shaped sits in this repo's
+        # committed content — so this check evaluates the compiled fixtures
+        # module directly rather than grepping a file that no longer exists.
         run: |
           set -euo pipefail
-          fail=0
-          for f in fixtures/secrets/*.txt; do
-            # Pull out long tokens the same way noLeak.test.ts does, and confirm
-            # none of them appear verbatim in anything the test run printed.
-            grep -oE '[A-Za-z0-9_/+.=-]{16,}' "$f" | sort -u | while read -r token; do
-              if grep -qF "$token" /tmp/unit-test-output.txt; then
-                echo "LEAK: token from $f appeared in test output: ${token:0:4}..." >&2
-                fail=1
-              fi
-            done
-          done
-          exit $fail
+          node -e '
+            const { SECRET_FIXTURES } = require("./out/test/unit/fixtures/secretFixtures.js");
+            const fs = require("fs");
+            const output = fs.readFileSync("/tmp/unit-test-output.txt", "utf8");
+            let leaked = false;
+            for (const [name, content] of Object.entries(SECRET_FIXTURES)) {
+              const tokens = new Set((content.match(/[A-Za-z0-9_/+.=-]{16,}/g)) || []);
+              for (const token of tokens) {
+                if (output.includes(token)) {
+                  console.error(`LEAK: token from ${name} appeared in test output: ${token.slice(0, 4)}...`);
+                  leaked = true;
+                }
+              }
+            }
+            process.exit(leaked ? 1 : 0);
+          '
+        working-directory: extension
 
   integration-test:
     name: VS Code integration test (@vscode/test-electron)

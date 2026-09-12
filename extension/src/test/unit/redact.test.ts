@@ -3,9 +3,12 @@ import { redactPreview, redactFinding, formatFindingMessage } from "../../redact
 
 describe("redact", () => {
   it("keeps only first/last 2 chars of a normal-length secret", () => {
-    const preview = redactPreview("AKIAABCDEFGHIJKLMNOP");
-    assert.strictEqual(preview.startsWith("AK"), true);
-    assert.strictEqual(preview.endsWith("OP"), true);
+    // Deliberately not a provider-shaped prefix (see fixtures/secretFixtures.ts
+    // for why this codebase avoids contiguous secret-shaped literals) — this
+    // test only exercises redactPreview's own truncation logic.
+    const preview = redactPreview("zzABCDEFGHIJKLMNzz");
+    assert.strictEqual(preview.startsWith("zz"), true);
+    assert.strictEqual(preview.endsWith("zz"), true);
     assert.strictEqual(preview.includes("ABCDEFGHIJKLMN"), false);
   });
 
@@ -15,7 +18,7 @@ describe("redact", () => {
   });
 
   it("never includes the raw secret in the formatted message", () => {
-    const rawSecret = "AKIASUPERSECRETVALUE1";
+    const rawSecret = "totally-not-a-real-secret-value-001";
     const finding = redactFinding({
       ruleId: "aws-access-key-id",
       description: "AWS access key ID",

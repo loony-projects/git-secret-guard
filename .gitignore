@@ -39,6 +39,8 @@ extension/.vscode-test/
 # stays tracked.
 extension/bin/*/
 
+fixtures/secrets/
+
 # This fixture's whole point is an on-disk node_modules/ with no manifest
 # (see projectDetector.test.ts) — un-ignore it despite the Node.js block above.
 !fixtures/projects/artifacts-no-manifest/node_modules/

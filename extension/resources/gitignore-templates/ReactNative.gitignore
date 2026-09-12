@@ -1,0 +1,37 @@
+# Node / Metro
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.metro-health-check*
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# React Native bundler output
+*.jsbundle
+
+# Android (this app's android/ subtree — a full native Gradle project lives
+# here, but it's part of this RN app, not a separate one)
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/.cxx/
+android/captures/
+*.apk
+*.aab
+
+# iOS (this app's ios/ subtree)
+ios/build/
+ios/Pods/
+ios/DerivedData/
+ios/*.xcuserstate
+ios/**/xcuserdata/
+*.ipa
+
+.env
+.env.local

@@ -3,6 +3,10 @@ import * as fs from "fs";
 import { GitleaksClient, GitleaksToolError } from "../../scanEngine/gitleaksClient";
 import { ProcessRunner } from "../../scanEngine/processRunner";
 
+// Deliberately not a provider-shaped literal (see fixtures/secretFixtures.ts
+// for why) — this only exercises JSON report parsing, not ruleset matching.
+const SAMPLE_SECRET_VALUE = "not-a-real-secret-value-001";
+
 const SAMPLE_REPORT = [
   {
     RuleID: "aws-access-key-id",
@@ -10,8 +14,8 @@ const SAMPLE_REPORT = [
     File: "src/config.ts",
     StartLine: 12,
     EndLine: 12,
-    Secret: "AKIAFAKEEXAMPLE12345",
-    Match: "AKIAFAKEEXAMPLE12345",
+    Secret: SAMPLE_SECRET_VALUE,
+    Match: SAMPLE_SECRET_VALUE,
   },
 ];
 
@@ -43,7 +47,7 @@ describe("GitleaksClient", () => {
 
     assert.strictEqual(findings.length, 1);
     assert.strictEqual(findings[0].ruleId, "aws-access-key-id");
-    assert.strictEqual(findings[0].rawSecret, "AKIAFAKEEXAMPLE12345");
+    assert.strictEqual(findings[0].rawSecret, SAMPLE_SECRET_VALUE);
     assert.strictEqual(fs.existsSync(capturedReportPath), false, "report temp file must be deleted after reading");
   });
 

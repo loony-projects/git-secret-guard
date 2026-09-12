@@ -1,19 +1,18 @@
 import * as assert from "assert";
-import * as fs from "fs";
-import * as path from "path";
 import { Logger, OutputSink } from "../../logger";
 import { redactFinding, formatFindingMessage } from "../../redact";
 import { RawFinding } from "../../scanEngine/types";
+import { SECRET_FIXTURES } from "./fixtures/secretFixtures";
 
 /**
  * The safety invariant this whole extension exists to uphold: a detected
  * secret must never be logged, echoed, or transmitted verbatim. This test
- * takes every fixture secret value, runs it through the exact
- * redact-then-log path the commands use (see commands/scanWorkspace.ts),
- * and greps everything the output channel ever received for the raw value.
+ * takes every fixture secret value (see fixtures/secretFixtures.ts — built
+ * from split string literals, not literal file content), runs it through
+ * the exact redact-then-log path the commands use (see
+ * commands/scanWorkspace.ts), and greps everything the output channel ever
+ * received for the raw value.
  */
-
-const FIXTURES_SECRETS_DIR = path.join(__dirname, "..", "..", "..", "..", "fixtures", "secrets");
 
 class RecordingSink implements OutputSink {
   readonly lines: string[] = [];
@@ -40,11 +39,8 @@ function extractLikelySecretTokens(fixtureContent: string): string[] {
 }
 
 describe("no secret ever reaches the logger", () => {
-  const fixtureFiles = fs.readdirSync(FIXTURES_SECRETS_DIR);
-
-  for (const fixtureFile of fixtureFiles) {
-    it(`redact -> log pipeline never echoes a raw token from fixtures/secrets/${fixtureFile}`, () => {
-      const content = fs.readFileSync(path.join(FIXTURES_SECRETS_DIR, fixtureFile), "utf8");
+  for (const [fixtureFile, content] of Object.entries(SECRET_FIXTURES)) {
+    it(`redact -> log pipeline never echoes a raw token from the ${fixtureFile} fixture`, () => {
       const tokens = extractLikelySecretTokens(content);
       assert.ok(tokens.length > 0, "fixture should contain at least one long token to test with");
 
