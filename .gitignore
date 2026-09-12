@@ -1,0 +1,45 @@
+# --- Node.js (auto-detected) ---
+# Detected via: extension/package.json
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+coverage/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+# --- end Node.js ---
+
+# --- OS (auto-detected) ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+# --- end OS ---
+
+# Extension packaging / test artifacts
+extension/*.vsix
+extension/.vscode-test/
+
+# CI-fetched, not committed (see docs/gitleaks-compatibility.md) — this
+# only matches subdirectories of bin/, so extension/bin/README.md still
+# stays tracked.
+extension/bin/*/
+
+# This fixture's whole point is an on-disk node_modules/ with no manifest
+# (see projectDetector.test.ts) — un-ignore it despite the Node.js block above.
+!fixtures/projects/artifacts-no-manifest/node_modules/
+!fixtures/projects/artifacts-no-manifest/node_modules/.gitkeep

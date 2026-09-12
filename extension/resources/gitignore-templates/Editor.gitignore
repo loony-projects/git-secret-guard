@@ -1,0 +1,5 @@
+# Optional — many teams intentionally commit shared .vscode/launch.json or
+# .idea/ run configurations. Uncomment the lines below only if this project
+# does NOT want editor config tracked.
+# .vscode/
+# .idea/

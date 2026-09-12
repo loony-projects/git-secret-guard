@@ -1,0 +1,17 @@
+{
+  "name": "git-secret-guard-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Monorepo root for Git Secret Guard: a VS Code extension that blocks secret leaks before they reach git history and manages .gitignore safely.",
+  "scripts": {
+    "install:extension": "cd extension && npm install",
+    "compile:extension": "cd extension && npm run compile",
+    "lint:extension": "cd extension && npm run lint",
+    "test:extension": "cd extension && npm test",
+    "unit-test:extension": "cd extension && npm run unit-test",
+    "package:extension": "cd extension && npm run package",
+    "fetch-gitleaks": "bash scripts/fetch-gitleaks.sh",
+    "verify": "npm run compile:extension && npm run lint:extension && npm run unit-test:extension"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,19 @@
+# Optional, opt-in fragment — NOT loaded by default.
+#
+# Generic high-entropy string detection catches secrets that don't match any
+# known provider format, at the cost of being the single biggest source of
+# false-positive fatigue (a 32-char CSS hash, a base64-encoded image, a UUID
+# with dashes stripped, a lorem-ipsum test fixture — all "look random").
+#
+# To enable this: copy the [[rules]] block below into your own file and
+# point `gitSecretGuard.customRulesPath` at it (see docs/configuration.md).
+# We intentionally don't make this a checkbox setting — treating it as "just
+# another custom rule" keeps the decision, and the resulting regex, fully
+# visible and editable rather than a hidden toggle.
+
+[[rules]]
+id = "generic-high-entropy-string"
+description = "Generic high-entropy string assigned to a variable (noisy — read docs/configuration.md before enabling)"
+regex = '''(?i)[a-z0-9_]*(key|token|secret|pwd|pass)[a-z0-9_]*\s*[:=]\s*['"]?[A-Za-z0-9+/_-]{32,}['"]?'''
+entropy = 4.2
+tags = ["generic", "noisy", "opt-in"]

@@ -1,0 +1,117 @@
+{
+  "name": "git-secret-guard",
+  "displayName": "Git Secret Guard",
+  "description": "Blocks secrets and credentials from reaching git history, and manages .gitignore safely — with an explicit, diffable, user-approved advisor.",
+  "version": "0.1.0",
+  "publisher": "git-secret-guard",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/git-secret-guard/git-secret-guard"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "security",
+    "secrets",
+    "gitleaks",
+    "gitignore",
+    "credentials",
+    "git"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Git Secret Guard",
+      "properties": {
+        "gitSecretGuard.blockCommitOnSecret": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hard-block a commit when the pre-commit hook finds a high-confidence secret. When false, the hook warns but still allows the commit."
+        },
+        "gitSecretGuard.scanOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Scan the active file for secrets on save and show editor diagnostics."
+        },
+        "gitSecretGuard.customRulesPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to additional gitleaks-format TOML rules, merged with the bundled default ruleset."
+        },
+        "gitSecretGuard.allowlistPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to a user-maintained gitleaks-format TOML allowlist (paths/regexes/stopwords), merged into the effective config. This is the only supported way to suppress a false positive."
+        },
+        "gitSecretGuard.gitleaksPath": {
+          "type": "string",
+          "default": "",
+          "description": "Override the gitleaks binary location. When empty, resolves a bundled binary if present, otherwise 'gitleaks' from PATH."
+        },
+        "gitSecretGuard.autoDetectProjectType": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the .gitignore Advisor's automatic project-type detection. The secret-shaped-file detector is independent and always stays on."
+        },
+        "gitSecretGuard.notifyOnNewManifest": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a dismissible notification when a new manifest file (e.g. package.json) appears mid-session, offering updated .gitignore suggestions."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "gitSecretGuard.scanWorkspace",
+        "title": "Git Secret Guard: Scan Workspace"
+      },
+      {
+        "command": "gitSecretGuard.regenerateGitignoreSuggestions",
+        "title": "Git Secret Guard: Regenerate .gitignore Suggestions"
+      },
+      {
+        "command": "gitSecretGuard.installHook",
+        "title": "Git Secret Guard: Install Pre-Commit Hook"
+      },
+      {
+        "command": "gitSecretGuard.uninstallHook",
+        "title": "Git Secret Guard: Uninstall Pre-Commit Hook"
+      },
+      {
+        "command": "gitSecretGuard.showOutput",
+        "title": "Git Secret Guard: Show Output"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "lint": "eslint src --ext ts",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js",
+    "unit-test": "mocha out/test/unit/**/*.test.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "@types/mocha": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/test-electron": "^2.3.9",
+    "eslint": "^8.57.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.3.0",
+    "typescript": "^5.4.0",
+    "@vscode/vsce": "^2.24.0"
+  }
+}

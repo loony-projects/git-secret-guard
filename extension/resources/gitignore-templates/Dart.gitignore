@@ -1,0 +1,6 @@
+.dart_tool/
+.packages
+build/
+/ios/Flutter/Generated.xcconfig
+/android/local.properties
+*.iml

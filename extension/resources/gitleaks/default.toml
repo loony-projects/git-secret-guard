@@ -1,0 +1,172 @@
+title = "Git Secret Guard default ruleset"
+
+# This file is authored and curated for Git Secret Guard, not vendored
+# wholesale from upstream gitleaks — see docs/gitleaks-compatibility.md for
+# why. Every regex below is written to be RE2-compatible (no lookaround, no
+# backreferences), since that's the engine gitleaks itself uses.
+#
+# Split into two sections:
+#   1. High-confidence, default-ON rules: recognizable secret *formats*
+#      (cloud provider key prefixes, PEM headers, token prefixes) or a
+#      secret-sounding assignment. False-positive risk is low because each
+#      rule is anchored to something structural, not just "looks random."
+#   2. A single default-OFF generic high-entropy rule is deliberately NOT
+#      included in this file at all — gitleaks has no per-rule "disabled"
+#      flag, so "off by default" means "not shipped in the file gitleaks is
+#      pointed at." See resources/gitleaks/optional-generic-entropy.toml for
+#      the opt-in fragment, and docs/configuration.md for why it's opt-in
+#      (generic entropy checks are the #1 source of false-positive fatigue).
+
+# ---------------------------------------------------------------------------
+# Cloud provider keys
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "aws-access-key-id"
+description = "AWS access key ID"
+regex = '''\b(AKIA|ASIA)[0-9A-Z]{16}\b'''
+tags = ["aws", "cloud", "high-confidence"]
+
+[[rules]]
+id = "aws-secret-access-key"
+description = "AWS secret access key (context-anchored to avoid matching an unrelated 40-char hex string, e.g. a git commit hash)"
+regex = '''(?i)aws_secret_access_key\s*[:=]\s*['"]?([A-Za-z0-9/+=]{40})['"]?'''
+tags = ["aws", "cloud", "high-confidence"]
+
+[[rules]]
+id = "gcp-api-key"
+description = "Google Cloud API key"
+regex = '''\bAIza[0-9A-Za-z\-_]{35}\b'''
+tags = ["gcp", "cloud", "high-confidence"]
+
+[[rules]]
+id = "azure-storage-account-key"
+description = "Azure Storage account key"
+regex = '''AccountKey=[A-Za-z0-9+/]{86}=='''
+tags = ["azure", "cloud", "high-confidence"]
+
+# ---------------------------------------------------------------------------
+# Private keys
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "pem-private-key"
+description = "PEM-encoded private key block"
+regex = '''-----BEGIN (RSA |EC |OPENSSH |DSA |)?PRIVATE KEY-----'''
+tags = ["private-key", "high-confidence"]
+
+# ---------------------------------------------------------------------------
+# Source-control / package-registry tokens
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "github-token-classic"
+description = "GitHub personal access / OAuth / app token"
+regex = '''\bgh[pousr]_[A-Za-z0-9]{36}\b'''
+tags = ["github", "high-confidence"]
+
+[[rules]]
+id = "github-token-fine-grained"
+description = "GitHub fine-grained personal access token"
+regex = '''\bgithub_pat_[A-Za-z0-9_]{80,}\b'''
+tags = ["github", "high-confidence"]
+
+[[rules]]
+id = "gitlab-pat"
+description = "GitLab personal access token"
+regex = '''\bglpat-[A-Za-z0-9\-_]{20}\b'''
+tags = ["gitlab", "high-confidence"]
+
+[[rules]]
+id = "npm-token"
+description = "npm access token"
+regex = '''\bnpm_[A-Za-z0-9]{36}\b'''
+tags = ["npm", "high-confidence"]
+
+# ---------------------------------------------------------------------------
+# Chat / messaging
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "slack-token"
+description = "Slack API token"
+regex = '''\bxox[baprs]-[A-Za-z0-9-]{10,48}\b'''
+tags = ["slack", "high-confidence"]
+
+[[rules]]
+id = "slack-webhook-url"
+description = "Slack incoming webhook URL"
+regex = '''https://hooks\.slack\.com/services/T[A-Za-z0-9]{8,10}/B[A-Za-z0-9]{8,10}/[A-Za-z0-9]{24}'''
+tags = ["slack", "high-confidence"]
+
+# ---------------------------------------------------------------------------
+# Payments / AI providers
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "stripe-live-key"
+description = "Stripe live secret/restricted key"
+regex = '''\b(sk|rk)_live_[A-Za-z0-9]{24,247}\b'''
+tags = ["stripe", "payments", "high-confidence"]
+
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API key"
+regex = '''\bsk-(proj-)?[A-Za-z0-9]{20,}\b'''
+tags = ["openai", "ai", "high-confidence"]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API key"
+regex = '''\bsk-ant-[A-Za-z0-9_-]{20,}\b'''
+tags = ["anthropic", "ai", "high-confidence"]
+
+# ---------------------------------------------------------------------------
+# Communications platforms
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "twilio-api-key-sid"
+description = "Twilio API key SID"
+regex = '''\bSK[0-9a-fA-F]{32}\b'''
+tags = ["twilio", "high-confidence"]
+
+[[rules]]
+id = "twilio-auth-token"
+description = "Twilio auth token (context-anchored: a bare 32-char hex string is indistinguishable from many non-secrets)"
+regex = '''(?i)twilio.{0,20}?(auth[_-]?token)\s*[:=]\s*['"]?([0-9a-fA-F]{32})['"]?'''
+tags = ["twilio", "high-confidence"]
+
+[[rules]]
+id = "sendgrid-api-key"
+description = "SendGrid API key"
+regex = '''\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b'''
+tags = ["sendgrid", "high-confidence"]
+
+# ---------------------------------------------------------------------------
+# Structural / cross-cutting
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "jwt"
+description = "JSON Web Token"
+regex = '''\bey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b'''
+tags = ["jwt", "moderate-confidence"]
+
+[[rules]]
+id = "connection-string-with-password"
+description = "Database connection string with an embedded password"
+regex = '''\b(postgres(ql)?|mysql|mongodb(\+srv)?|redis|amqp):\/\/[A-Za-z0-9._%+-]+:[^@\/\s]{3,}@[A-Za-z0-9.-]+'''
+tags = ["database", "high-confidence"]
+
+[[rules]]
+id = "dotenv-style-secret-assignment"
+description = "KEY=value assignment where KEY looks like a secret (e.g. .env files) — anchored to the key name, not just entropy"
+regex = '''(?i)\b(SECRET|PASSWORD|PASSWD|PRIVATE_KEY|API_KEY|ACCESS_KEY|AUTH_TOKEN|CLIENT_SECRET)[A-Z0-9_]*\s*=\s*['"]?[A-Za-z0-9_\-/+=]{8,}['"]?'''
+tags = ["dotenv", "moderate-confidence"]
+
+[allowlist]
+description = "Built-in allowlist for common non-secret false positives"
+regexes = [
+  '''(?i)(SECRET|PASSWORD|API_KEY|ACCESS_KEY|AUTH_TOKEN|CLIENT_SECRET)[A-Z0-9_]*\s*=\s*['"]?(changeme|example|placeholder|xxx+|your[_-]?api[_-]?key|redacted|<[^>]+>)['"]?''',
+]
